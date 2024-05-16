@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -23,11 +21,10 @@ func StartGinServer() {
 		context.JSON(http.StatusOK, gin.H{"message": "hello world"})
 	})
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
 	serverPort := os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "8080"
+	}
 
 	if err := server.Run(":" + serverPort); err != nil {
 		fmt.Println("Server is experiencing problems running")
