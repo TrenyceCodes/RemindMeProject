@@ -1,6 +1,8 @@
 package main
 
 import (
+	"example/remindme/connection"
+	"example/remindme/routes"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,9 +45,18 @@ func StartGinServer() {
 	})
 	server.Use(cors.New(config))
 
+	client, message, err := connection.MongoDatabaseConnection()
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+	fmt.Println(message)
+
 	server.GET("/", func(context *gin.Context) {
 		context.JSON(http.StatusOK, gin.H{"message": "hello world"})
 	})
+
+	routes.HandleRegistratingUser(client, server)
 
 	serverPort := os.Getenv("PORT")
 	if serverPort == "" {
