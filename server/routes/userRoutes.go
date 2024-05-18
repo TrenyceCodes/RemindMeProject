@@ -9,4 +9,5 @@ import (
 
 func HandleRegistratingUser(client *mongo.Client, route *gin.Engine) {
 	route.POST("/user/register", controller.RegisterUser(client))
+	route.POST("/user/login", controller.LoginUser(client))
 }

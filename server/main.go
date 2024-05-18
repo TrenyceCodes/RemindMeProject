@@ -23,15 +23,12 @@ func StartGinServer() {
 	config := cors.DefaultConfig()
 	config.AllowCredentials = true
 	config.AllowAllOrigins = false
-	// I think you should whitelist a limited origins instead:
-	//  config.AllowAllOrigins = []{"xxxx", "xxxx"}
 	config.AllowOriginFunc = func(origin string) bool {
 		return true
 	}
 
 	server.Use(func(context *gin.Context) {
-		host := context.Request.Header.Get("Origin")
-		context.Writer.Header().Set("Access-Control-Allow-Origin", host)
+		context.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		context.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		context.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		context.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")

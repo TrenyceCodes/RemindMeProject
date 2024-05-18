@@ -22,6 +22,21 @@ function App() {
       alert(error)
     })
   }
+
+  function onSubmitLogin() {
+    axios.post("http://localhost:8080/user/login", {
+      username: username,
+      email: email,
+      password: password
+    }).then((response) => {
+      console.log(response.data.message);
+      console.log(response.data.data);
+      let message: string = response.data.message;
+      setMessage(message)
+    }).catch((error: AxiosError) => {
+      alert(error)
+    })
+  }
   
 
   return (
@@ -30,9 +45,18 @@ function App() {
       
       <form action="" onSubmit={onSubmit}>
         <input type="text" name="username" id="username" placeholder="Tom" value={username} onChange={(e) => setUsername(e.target.value)}/><br/>
-        <input type="text" name="username" id="username" placeholder="Tom@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)}/><br/>
-        <input type="text" name="username" id="username" placeholder="123456743" value={password} onChange={(e) => setPassword(e.target.value)}/><br/>
-        <input type="submit" value="Create Account" />
+        <input type="text" name="email" id="email" placeholder="Tom@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)}/><br/>
+        <input type="text" name="password" id="password" placeholder="123456743" value={password} onChange={(e) => setPassword(e.target.value)}/><br/>
+        <input type="submit" value="Create Account" /><br/>
+      </form>
+      {message}
+      
+      <br/>
+      <form action="" onSubmit={onSubmitLogin}>
+        <input type="text" name="username" id="username" placeholder="Tom" value={username} onChange={(e) => setUsername(e.target.value)}/><br/>
+        <input type="email" name="email" id="email" placeholder="Tom@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)}/><br/>
+        <input type="text" name="password" id="password" placeholder="123456743" value={password} onChange={(e) => setPassword(e.target.value)}/><br/>
+        <input type="submit" value="Login" /><br/>
       </form>
       {message}
     </>

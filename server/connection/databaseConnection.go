@@ -2,44 +2,23 @@ package connection
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func MongoDatabaseConnection() (*mongo.Client, string, error) {
-	envFile, _ := godotenv.Read(".env")
-
-	ctx := context.Background()
-
-	// Set the version of the Stable API on the client
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(envFile["DATABASE_CONNECTION"]).SetServerAPIOptions(serverAPI)
-
+	opts := options.Client().ApplyURI("mongodb+srv://priceboom811:kxmpgzEmeEqZigU1@cluster0.xm9rk9a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0").SetServerAPIOptions(serverAPI)
 	// Create a new client and connect to the server
-	client, err := mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
-		return nil, "", err
+		return client, "", err
 	}
-
-	// Ping to confirm a successful connection
-	if err := client.Ping(ctx, nil); err != nil {
-		return nil, "", err
+	// Send a ping to confirm a successful connection
+	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "ping", Value: 1}}).Err(); err != nil {
+		return client, "", err
 	}
-
-	// Check if the MongoDB connection is nil
-	if client == nil {
-		fmt.Println("MongoDB connection is nil. Aborting insertion.")
-		return nil, "", err
-	}
-
-	// Check if the connection is still alive before proceeding
-	if err := client.Ping(context.Background(), nil); err != nil {
-		fmt.Println("Error pinging MongoDB:", err)
-		return nil, "", err
-	}
-
-	return client, "Pinged your deployment. You successfully connected to MongoDB!", nil
+	return client, "Pinged your deployment. You successfully connected to MongoDB!", err
 }
