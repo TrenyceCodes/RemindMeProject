@@ -53,7 +53,7 @@ func StartGinServer() {
 		context.JSON(http.StatusOK, gin.H{"message": "hello world"})
 	})
 
-	routes.HandleRegistratingUser(client, server)
+	routes.HandleUserAuthentication(client, server)
 
 	serverPort := os.Getenv("PORT")
 	if serverPort == "" {

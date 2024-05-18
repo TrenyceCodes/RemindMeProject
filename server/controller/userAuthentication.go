@@ -3,7 +3,9 @@ package controller
 import (
 	"context"
 	"example/remindme/model"
+	"example/remindme/utils"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,8 +26,6 @@ func RegisterUser(client *mongo.Client) gin.HandlerFunc {
 
 		//loads in user model, setting user id and id to the same object value
 		var user model.User
-		user.Id = primitive.NewObjectID()
-		user.User_id = user.Id.Hex()
 
 		if client == nil {
 			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Client is nil"})
@@ -40,6 +40,22 @@ func RegisterUser(client *mongo.Client) gin.HandlerFunc {
 			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "ShouldBindJSON user data failed"})
 			return
 		}
+
+		user = model.User{
+			Username: user.Username,
+			Email:    user.Email,
+			Password: user.Password,
+		}
+		hashPassword, message, err := utils.HashPassword(user.Password)
+		if err != nil {
+			log.Fatal("Error: ", err)
+			return
+		}
+
+		user.Id = primitive.NewObjectID()
+		user.User_id = user.Id.Hex()
+		user.Password = hashPassword
+		fmt.Println(message)
 
 		insertUserData, err := mongoCollection.InsertOne(mongoContext, user)
 		if err != nil {
@@ -90,6 +106,12 @@ func LoginUser(client *mongo.Client) gin.HandlerFunc {
 
 		if err := mongoCollection.FindOne(mongoContext, filter).Decode(&foundUser); err != nil {
 			ginContext.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		isPasswordValid, message := utils.ValidatePassword(user.Password, foundUser.Password)
+		if isPasswordValid == false {
+			fmt.Println(message)
 			return
 		}
 
