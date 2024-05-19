@@ -41,11 +41,19 @@ func RegisterUser(client *mongo.Client) gin.HandlerFunc {
 			return
 		}
 
-		user = model.User{
-			Username: user.Username,
-			Email:    user.Email,
-			Password: user.Password,
+		jsonwebtoken, err := utils.CreateToken(user.Username, user.User_id)
+		if err != nil {
+			log.Fatal("Error: ", err)
+			return
 		}
+
+		user = model.User{
+			Username:     user.Username,
+			Email:        user.Email,
+			Password:     user.Password,
+			JsonWebToken: jsonwebtoken,
+		}
+
 		hashPassword, message, err := utils.HashPassword(user.Password)
 		if err != nil {
 			log.Fatal("Error: ", err)
@@ -55,21 +63,21 @@ func RegisterUser(client *mongo.Client) gin.HandlerFunc {
 		user.Id = primitive.NewObjectID()
 		user.User_id = user.Id.Hex()
 		user.Password = hashPassword
+		user.JsonWebToken = jsonwebtoken
 		fmt.Println(message)
 
-		insertUserData, err := mongoCollection.InsertOne(mongoContext, user)
+		_, err = mongoCollection.InsertOne(mongoContext, user)
 		if err != nil {
 			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Error inserting user"})
 			return
 		}
 
-		fmt.Println("User inserted: ", insertUserData.InsertedID)
 		ginContext.JSON(http.StatusOK, gin.H{
 			"message": "user created successfully",
 			"data": map[string]interface{}{
-				"inserted_id": insertUserData.InsertedID,
-				"username":    user.Username,
-				"email":       user.Email,
+				"username":     user.Username,
+				"email":        user.Email,
+				"jsonwebtoken": user.JsonWebToken,
 			},
 		})
 	}
@@ -110,7 +118,7 @@ func LoginUser(client *mongo.Client) gin.HandlerFunc {
 		}
 
 		isPasswordValid, message := utils.ValidatePassword(user.Password, foundUser.Password)
-		if isPasswordValid == false {
+		if !isPasswordValid {
 			fmt.Println(message)
 			return
 		}

@@ -10,6 +10,7 @@ func HashPassword(password string) (string, string, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
 		log.Fatal("There is a problem hashing password: ", err)
+		return string(hashPassword), "There is a problem hashing password: ", err
 	}
 
 	return string(hashPassword), "Password hashed successfully", err
@@ -17,7 +18,7 @@ func HashPassword(password string) (string, string, error) {
 
 func ValidatePassword(password string, userPassword string) (bool, string) {
 	if err := bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(password)); err != nil {
-		return false, "There was an issue hashing password"
+		return false, "Invalid password"
 	}
 
 	return true, "Password is valid"
