@@ -179,3 +179,9 @@ func UpdateTodo(client *mongo.Client) gin.HandlerFunc {
 
 	}
 }
+
+func DeleteTodo(client *mongo.Client) gin.HandlerFunc {
+	return func(context *gin.Context) {
+
+	}
+}
