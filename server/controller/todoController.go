@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"example/remindme/model"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -84,5 +86,46 @@ func CreateTodo(client *mongo.Client) gin.HandlerFunc {
 
 		// Respond with success
 		ginContext.JSON(http.StatusOK, gin.H{"message": "Todo created successfully", "todo": todo})
+	}
+}
+
+func GetTodoById(client *mongo.Client) gin.HandlerFunc {
+	return func(ginContext *gin.Context) {
+		// Load environment variables
+		err := godotenv.Load(".env")
+		if err != nil {
+			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to load environment variables"})
+			return
+		}
+
+		// Extract the Todo ID from the URL parameters
+		todoID := ginContext.Param("id")
+		if todoID == "" {
+			ginContext.JSON(http.StatusBadRequest, gin.H{"message": "Todo ID is required"})
+			return
+		}
+
+		// Prepare the MongoDB context and collection
+		mongoContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		mongoCollection := client.Database(os.Getenv("DATABASE_NAME")).Collection("todos")
+
+		// Define the filter to search by Todo ID
+		filter := bson.M{"todo_id": todoID}
+
+		// Find the todo in the database
+		var todo model.Todo
+		err = mongoCollection.FindOne(mongoContext, filter).Decode(&todo)
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				ginContext.JSON(http.StatusNotFound, gin.H{"message": "No matching document found"})
+			} else {
+				ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve todo"})
+			}
+			return
+		}
+
+		// Respond with the retrieved todo
+		ginContext.JSON(http.StatusOK, gin.H{"message": "Todo retrieved successfully", "todo": todo})
 	}
 }
