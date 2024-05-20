@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"example/remindme/model"
 	"fmt"
 	"net/http"
@@ -89,7 +88,7 @@ func CreateTodo(client *mongo.Client) gin.HandlerFunc {
 	}
 }
 
-func GetTodoById(client *mongo.Client) gin.HandlerFunc {
+func GetTodo(client *mongo.Client) gin.HandlerFunc {
 	return func(ginContext *gin.Context) {
 		// Load environment variables
 		err := godotenv.Load(".env")
@@ -98,10 +97,42 @@ func GetTodoById(client *mongo.Client) gin.HandlerFunc {
 			return
 		}
 
-		// Extract the Todo ID from the URL parameters
-		todoID := ginContext.Param("id")
-		if todoID == "" {
-			ginContext.JSON(http.StatusBadRequest, gin.H{"message": "Todo ID is required"})
+		// Get the JWT from the request header
+		tokenString := ginContext.Request.Header.Get("Authorization")
+		if tokenString == "" {
+			ginContext.JSON(http.StatusUnauthorized, gin.H{"message": "Authorization token required"})
+			return
+		}
+
+		// Remove "Bearer " prefix if present
+		if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+			tokenString = tokenString[7:]
+		}
+
+		// Verify and decode the JWT
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Ensure the signing method is what you expect
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			// Return the secret key
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+
+		if err != nil {
+			ginContext.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid authorization token"})
+			return
+		}
+
+		// Extract username from token claims
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
+			ginContext.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
+			return
+		}
+		username, ok := claims["username"].(string)
+		if !ok {
+			ginContext.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
 			return
 		}
 
@@ -110,22 +141,41 @@ func GetTodoById(client *mongo.Client) gin.HandlerFunc {
 		defer cancel()
 		mongoCollection := client.Database(os.Getenv("DATABASE_NAME")).Collection("todos")
 
-		// Define the filter to search by Todo ID
-		filter := bson.M{"todo_id": todoID}
+		// Define the filter to search by author
+		filter := bson.M{"author": username}
 
-		// Find the todo in the database
-		var todo model.Todo
-		err = mongoCollection.FindOne(mongoContext, filter).Decode(&todo)
+		// Find the todos in the database
+		cursor, err := mongoCollection.Find(mongoContext, filter)
 		if err != nil {
-			if errors.Is(err, mongo.ErrNoDocuments) {
-				ginContext.JSON(http.StatusNotFound, gin.H{"message": "No matching document found"})
-			} else {
-				ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve todo"})
+			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to retrieve todos"})
+			return
+		}
+		defer cursor.Close(mongoContext)
+
+		// Iterate through the cursor and decode each todo
+		var todos []model.Todo
+		for cursor.Next(mongoContext) {
+			var todo model.Todo
+			if err := cursor.Decode(&todo); err != nil {
+				ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to decode todo"})
+				return
 			}
+			todos = append(todos, todo)
+		}
+
+		// Check for any cursor errors
+		if err := cursor.Err(); err != nil {
+			ginContext.JSON(http.StatusInternalServerError, gin.H{"message": "Cursor error"})
 			return
 		}
 
-		// Respond with the retrieved todo
-		ginContext.JSON(http.StatusOK, gin.H{"message": "Todo retrieved successfully", "todo": todo})
+		// Respond with the retrieved todos
+		ginContext.JSON(http.StatusOK, gin.H{"message": "Todos retrieved successfully", "todos": todos})
+	}
+}
+
+func UpdateTodo(client *mongo.Client) gin.HandlerFunc {
+	return func(context *gin.Context) {
+
 	}
 }
