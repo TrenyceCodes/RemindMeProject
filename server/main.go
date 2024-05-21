@@ -37,10 +37,6 @@ func StartGinServer() {
 	}
 	fmt.Println(message)
 
-	server.GET("/", func(context *gin.Context) {
-		context.JSON(http.StatusOK, gin.H{"message": "hello world"})
-	})
-
 	routes.HandleUserAuthentication(client, server)
 	routes.HandleTodoRoutes(client, server)
 	handleServerMiddleware(server, config)
@@ -71,7 +67,7 @@ func handleServerMiddleware(server *gin.Engine, config cors.Config) {
 		}
 
 		// Get the JWT from the Authorization header
-		authHeader := context.Request.Header.Get("Authorization")
+		authHeader := context.Writer.Header().Get("Authorization")
 		if authHeader == "" {
 			context.JSON(http.StatusUnauthorized, gin.H{"message": "Authorization header is required"})
 			context.Abort()
@@ -111,8 +107,16 @@ func handleServerMiddleware(server *gin.Engine, config cors.Config) {
 
 		// Extract claims and set context
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			context.Set("Username", claims["username"])
-			context.Set("UserId", claims["userId"])
+			username, ok := claims["username"].(string)
+			if !ok {
+				context.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
+				context.Abort()
+				return
+			}
+			context.Set("Username", username)
+			if userId, ok := claims["userId"].(string); ok {
+				context.Set("UserId", userId)
+			}
 		} else {
 			context.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid token claims"})
 			context.Abort()

@@ -10,4 +10,6 @@ import (
 func HandleTodoRoutes(client *mongo.Client, route *gin.Engine) {
 	route.POST("/todo", controller.CreateTodo(client))
 	route.GET("/todo", controller.GetTodo(client))
+	route.PUT("/todo/:id", controller.UpdateTodo(client))
+	route.DELETE("/todo/:id", controller.DeleteTodo(client))
 }
